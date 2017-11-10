@@ -3,6 +3,7 @@ version '0.1.0'
 
 buildscript {
     ext.kotlin_version = '1.2.0-rc-39'
+    ext.jackson_version = '2.9.0'
 
     repositories {
         maven {     url 'http://dl.bintray.com/kotlin/kotlin-eap-1.2' }
@@ -25,6 +26,17 @@ repositories {
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+
+    compile "com.fasterxml.jackson.core:jackson-core:$jackson_version"
+    compile "com.fasterxml.jackson.core:jackson-annotations:$jackson_version"
+    compile "com.fasterxml.jackson.core:jackson-databind:$jackson_version"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jackson_version"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:$jackson_version"
+    compile "com.fasterxml.jackson.module:jackson-module-kotlin:$jackson_version"
+    compile "com.fasterxml.jackson.module:jackson-module-parameter-names:$jackson_version"
+
+    compile group: 'com.github.jnr', name: 'jnr-unixsocket', version: '0.18'
+
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
