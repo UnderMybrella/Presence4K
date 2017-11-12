@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
@@ -15,7 +16,6 @@ import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
-import java.nio.channels.Channels
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -33,6 +33,7 @@ class IPCWrapper(val socketPath: String, val clientID: String) {
         val MAPPER: ObjectMapper = ObjectMapper()
                 .registerKotlinModule()
                 .registerModules(Jdk8Module(), JavaTimeModule(), ParameterNamesModule())
+                .registerModule(SimpleModule().addSerializer(RichPresence::class.java, RichPresenceSerializer()))
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
                 .setSerializationInclusion(JsonInclude.Include.NON_ABSENT)
@@ -46,6 +47,14 @@ class IPCWrapper(val socketPath: String, val clientID: String) {
 
             return null
         }
+
+        fun obtainSpecific(clientID: String, ipcNum: Int): IPCWrapper? {
+            val socket = File("$TEMP_PATH/discord-ipc-$ipcNum")
+            if (socket.exists())
+                return IPCWrapper(socket.absolutePath, clientID)
+
+            return null
+        }
     }
 
     val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
@@ -56,9 +65,6 @@ class IPCWrapper(val socketPath: String, val clientID: String) {
     val address = UnixSocketAddress(socketPath)
     val channel = UnixSocketChannel.open(address).apply { configureBlocking(false) }
 
-    private val inputStream: InputStream = Channels.newInputStream(channel)
-    private val outputStream: OutputStream = Channels.newOutputStream(channel)
-
     init {
         queue.add(IPCRequest(Opcode.HANDSHAKE, mapOf("v" to VERSION, "client_id" to clientID)))
         executor.scheduleAtFixedRate(this::poll, 0, SLEEP_TIME, TimeUnit.MILLISECONDS)
@@ -66,12 +72,15 @@ class IPCWrapper(val socketPath: String, val clientID: String) {
 
     fun poll() {
         try {
-            for (i in queue.indices)
+            for (i in queue.indices) {
                 writeFrame(queue.remove())
+                Thread.sleep(100)
+            }
 
             var frame: IPCResponse? = readFrame()
             while(frame != null) {
                 println(frame)
+                Thread.sleep(100)
                 frame = readFrame()
             }
 
